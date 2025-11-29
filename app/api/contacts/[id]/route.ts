@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 
-// ENDPOINT EDITAR
+//ENDPOINT EDITAR
 export async function PUT(
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params; // ya no se usa await
+  const { id } = await context.params;
   const contactId = Number(id);
 
   if (isNaN(contactId)) {
@@ -17,6 +17,7 @@ export async function PUT(
   try {
     const body = await request.json();
 
+    // obtener contacto actual
     const previous = await prisma.contact.findUnique({
       where: { id: contactId },
     });
@@ -25,6 +26,7 @@ export async function PUT(
       return NextResponse.json({ error: "No existe el contacto" }, { status: 404 });
     }
 
+    // actualizar contacto
     const updated = await prisma.contact.update({
       where: { id: contactId },
       data: {
@@ -35,10 +37,11 @@ export async function PUT(
       },
     });
 
+    // si cambió el status, crear historial
     if (previous.status !== body.status) {
       await prisma.statusHistory.create({
         data: {
-          contactId,
+          contactId: contactId,
           oldStatus: previous.status,
           newStatus: body.status,
         },
@@ -56,12 +59,14 @@ export async function PUT(
   }
 }
 
-// ENDPOINT ELIMINAR
+//ENDPOINT ELIMINAR
 export async function DELETE(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = context.params; // ya no se usa await
+
+  const { id } = await context.params;
+
   const contactId = Number(id);
 
   if (isNaN(contactId)) {
@@ -78,9 +83,11 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
+    // No se usa "error" para evitar el warning de variable no usada
     return NextResponse.json(
       { error: 'No se pudo eliminar el contacto' },
       { status: 500 }
     );
   }
 }
+
